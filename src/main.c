@@ -28,6 +28,7 @@
 //#include "mmceman/gc_mmceman_commands.h"
 #include "gc_cardman.h"
 #include "gc.h"
+#include "usb/usb_iface.h"
 
 #include "game_db/game_db.h"
 
@@ -100,6 +101,7 @@ static void debug_task(void) {
 
 
 int main() {
+    usb_iface_boot_check();
     input_init();
     check_bootloader_reset();
 
@@ -132,13 +134,20 @@ int main() {
 #endif
 
 
+#if !DEBUG_USB_UART
+    usb_iface_init();
+#endif
+
+    gc_init();
     while (1) {
-        gc_init();
-        while (1) {
-            debug_task();
-            if (!gc_task())
-                break;
-        }
-        gc_deinit();
+        debug_task();
+#if !DEBUG_USB_UART
+        usb_iface_task();
+#endif
+        if (!gc_task())
+            break;
     }
+    /* Only a USB drive-mode request ends the card loop; drive mode ends in a reboot. */
+    gc_stop_for_usb();
+    usb_iface_run_mass();
 }

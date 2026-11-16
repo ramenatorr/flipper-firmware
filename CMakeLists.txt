@@ -43,6 +43,8 @@ add_subdirectory(database)
 add_executable(${TARGET_NAME}
     src/main.c
     src/gc.c
+    src/usb/usb_iface.c
+    src/usb/usb_descriptors.c
 
     src/game_db/game_db.c
     src/wear_leveling/wear_leveling.c
@@ -73,6 +75,7 @@ target_compile_definitions(
 
 target_include_directories(${TARGET_NAME} PUBLIC
     ext/fnv
+    src/usb
 )
 
 if(NOT FLIPPERMCE)
@@ -150,4 +153,6 @@ if(DEBUG_USB_UART)
     pico_enable_stdio_usb(${TARGET_NAME} 1)
 else()
     pico_enable_stdio_usb(${TARGET_NAME} 0)
+    # retrobox fork: our own TinyUSB device (serial commands + USB drive mode).
+    target_link_libraries(${TARGET_NAME} PRIVATE tinyusb_device pico_unique_id)
 endif()

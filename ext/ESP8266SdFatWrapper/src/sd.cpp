@@ -227,3 +227,22 @@ extern "C" bool sd_sync_cache(void) {
     // Force card sync to ensure all writes are committed
     return sd.card()->syncDevice();
 }
+extern "C" bool sd_close_all(void) {
+    bool ok = true;
+    for (size_t fd = 0; fd <= NUM_FILES; ++fd) {
+        if (files[fd].isOpen()) {
+            if (!files[fd].sync())
+                ok = false;
+            files[fd].close();
+        }
+    }
+    if (!initialized)
+        return ok;
+    return sd.card()->syncDevice() && ok;
+}
+
+extern "C" uint32_t sd_sector_count(void) {
+    if (!initialized)
+        return 0;
+    return sd.card()->sectorCount();
+}

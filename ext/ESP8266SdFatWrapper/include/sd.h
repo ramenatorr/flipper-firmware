@@ -41,3 +41,8 @@ bool sd_write_sector(uint32_t sector, const uint8_t* src);
  * @return true if sync successful, false if error
  */
 bool sd_sync_cache(void);
+
+/* retrobox fork: close every open file and sync the card (before raw USB access). */
+bool sd_close_all(void);
+/* Card size in 512-byte sectors (0 if unknown). */
+uint32_t sd_sector_count(void);

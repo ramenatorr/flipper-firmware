@@ -72,6 +72,10 @@ static void heapify(int i) {
     }
 }
 
+bool gc_dirty_pending(void) {
+    return num_dirty > 0;
+}
+
 int gc_dirty_get_marked(void) {
     if (num_dirty == 0)
         return -1;

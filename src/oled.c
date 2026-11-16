@@ -81,6 +81,11 @@ static void draw_char(char c) {
     }
 }
 
+void oled_text_home(void) {
+    text_x = 0;
+    text_y = 0;
+}
+
 void oled_draw_text(const char *s) {
     for (; *s; s++)
         draw_char(*s);

@@ -94,6 +94,9 @@ static void update_encoding(void) {
     log(LOG_INFO, "card_enc=%d\n", card_enc);
 }
 
+/* retrobox fork: true right after USB drive mode, so the card comes back on the card it left. */
+extern bool usb_iface_boot_restore_card(void);
+
 static void set_default_numbered_card() {
     card_idx = 1;
     card_chan = CHAN_MIN;
@@ -102,7 +105,7 @@ static void set_default_numbered_card() {
 }
 
 static void set_default_card() {
-    if (settings_get_gc_card_restore()) {
+    if (settings_get_gc_card_restore() || usb_iface_boot_restore_card()) {
         uint8_t state;
         char game_id[5] = {0};
         settings_get_gc_last_card(&state, &card_idx, &card_chan, folder_name);

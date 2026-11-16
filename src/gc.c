@@ -11,6 +11,9 @@
 #include "card_emu/gc_memory_card.h"
 #include "gc_cardman.h"
 #include "debug.h"
+#include "gc_dirty.h"
+#include "pico/time.h"
+#include "usb/usb_iface.h"
 
 #if LOG_LEVEL_GC_MAIN == 0
 #define log(x...)
@@ -54,7 +57,18 @@ bool gc_task(void) {
         gc_mmceman_block_task();
     }
 
-    return true;
+    /* A USB host asked for drive mode: leave the card loop (main runs drive mode). */
+    return !usb_iface_mass_requested();
+}
+
+void gc_stop_for_usb(void) {
+    gc_memory_card_exit();
+    /* Drain everything the console wrote into the PSRAM image out to the SD. */
+    uint64_t deadline = time_us_64() + 10u * 1000u * 1000u;
+    while ((gc_mc_data_interface_write_occured() || gc_dirty_pending()) && time_us_64() < deadline)
+        gc_mc_data_interface_task();
+    multicore_reset_core1();
+    gc_cardman_close();
 }
 
 void gc_deinit(void) {

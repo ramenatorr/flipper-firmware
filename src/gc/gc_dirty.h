@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include "hardware/sync.h"
 #include "hardware/timer.h"
 #include "pico/platform.h"
@@ -31,5 +32,6 @@ void gc_dirty_init(void);
 int gc_dirty_get_marked(void);
 void gc_dirty_mark(uint32_t sector);
 void gc_dirty_task(void);
+bool gc_dirty_pending(void);
 
 extern int gc_dirty_activity;
