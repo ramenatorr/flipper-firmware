@@ -157,7 +157,7 @@ static void psram_force_spi_mode(void) {
     gpio_init(PSRAM_CLK);
     gpio_put(PSRAM_CLK, 0);
     gpio_set_dir(PSRAM_CLK, GPIO_OUT);
-    for (int i = 0; i < 4; ++i) {
+    for (uint i = 0; i < 4; ++i) {
         gpio_init(PSRAM_DAT + i);
         gpio_set_dir(PSRAM_DAT + i, GPIO_OUT);
     }
@@ -174,7 +174,7 @@ static void psram_force_spi_mode(void) {
     busy_wait_us(1);
     gpio_put(spi.cs_pin, 1);
     busy_wait_us(1);
-    for (int i = 0; i < 4; ++i)
+    for (uint i = 0; i < 4; ++i)
         gpio_set_dir(PSRAM_DAT + i, GPIO_IN);
 }
 
