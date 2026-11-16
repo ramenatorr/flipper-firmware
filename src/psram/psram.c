@@ -148,12 +148,44 @@ static void psram_run_tests(void) {
         1000000.0 * (double)(NUM_TESTS * TEST_CYCLES * TEST_BLOCK_SIZE * 2) / (double)(end - start) / 1024.0);
 }
 
+/* retrobox fork: a soft reboot (watchdog) leaves the PSRAM powered and still in
+ * QPI mode, where the SPI read-ID below returns 00 00. Bit-bang the QPI-mode
+ * "exit QPI" command (0xF5: two nibbles on IO0-IO3) first. A chip that is
+ * already in SPI mode sees only two clocks on SI and ignores the aborted command. */
+static void psram_force_spi_mode(void) {
+    const uint32_t data_mask = 0xFu << PSRAM_DAT;
+    gpio_init(PSRAM_CLK);
+    gpio_put(PSRAM_CLK, 0);
+    gpio_set_dir(PSRAM_CLK, GPIO_OUT);
+    for (int i = 0; i < 4; ++i) {
+        gpio_init(PSRAM_DAT + i);
+        gpio_set_dir(PSRAM_DAT + i, GPIO_OUT);
+    }
+    gpio_put(spi.cs_pin, 0);
+    busy_wait_us(1);
+    const uint8_t nibbles[2] = { 0xF, 0x5 };
+    for (int n = 0; n < 2; ++n) {
+        gpio_put_masked(data_mask, (uint32_t)nibbles[n] << PSRAM_DAT);
+        busy_wait_us(1);
+        gpio_put(PSRAM_CLK, 1);
+        busy_wait_us(1);
+        gpio_put(PSRAM_CLK, 0);
+    }
+    busy_wait_us(1);
+    gpio_put(spi.cs_pin, 1);
+    busy_wait_us(1);
+    for (int i = 0; i < 4; ++i)
+        gpio_set_dir(PSRAM_DAT + i, GPIO_IN);
+}
+
 void psram_init(void) {
     uint32_t offset;
 
     gpio_init(spi.cs_pin);
     gpio_put(spi.cs_pin, 1);
     gpio_set_dir(spi.cs_pin, GPIO_OUT);
+
+    psram_force_spi_mode();
 
     /* start in SPI mode */
     offset = pio_add_program(spi.pio, &spi_cpha0_program);
