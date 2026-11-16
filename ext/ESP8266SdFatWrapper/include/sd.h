@@ -46,3 +46,9 @@ bool sd_sync_cache(void);
 bool sd_close_all(void);
 /* Card size in 512-byte sectors (0 if unknown). */
 uint32_t sd_sector_count(void);
+/* Raw sector access for USB drive mode: on failure, end any open stream and retry,
+ * then re-initialise the card and retry once more. */
+bool sd_read_sector_robust(uint32_t sector, uint8_t* dst);
+bool sd_write_sector_robust(uint32_t sector, const uint8_t* src);
+/* Last SdFat error: (errorCode << 8) | errorData. */
+uint32_t sd_last_error(void);

@@ -40,6 +40,8 @@ static volatile bool mass_active;
 static bool exit_pending;
 static uint64_t exit_at_us;
 static uint32_t sectors;
+static uint32_t n_reads, n_writes, n_read_fail, n_write_fail, n_retries_ok;
+static uint32_t first_fail_lba = 0xFFFFFFFFu;
 
 static char line[64];
 static size_t line_len;
@@ -88,14 +90,19 @@ static void request_exit(void) {
 }
 
 static void handle_command(char *cmd) {
-    char buf[96];
+    char buf[160];
 
     if (!strcmp(cmd, "version")) {
         snprintf(buf, sizeof(buf), "OK flippermce %s retrobox-usb", flippermce_version);
         reply(buf);
     } else if (!strcmp(cmd, "status")) {
-        if (mass_active)
-            reply("OK mode=mass");
+        if (mass_active) {
+            snprintf(buf, sizeof(buf), "OK mode=mass reads=%lu writes=%lu rfail=%lu wfail=%lu retried=%lu sderr=0x%04lx first_fail=%ld",
+                     (unsigned long)n_reads, (unsigned long)n_writes, (unsigned long)n_read_fail,
+                     (unsigned long)n_write_fail, (unsigned long)n_retries_ok, (unsigned long)sd_last_error(),
+                     first_fail_lba == 0xFFFFFFFFu ? -1L : (long)first_fail_lba);
+            reply(buf);
+        }
         else if (mass_requested)
             reply("OK mode=entering-mass");
         else {
@@ -253,14 +260,25 @@ static int32_t transfer(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *byt
         if (n > remaining)
             n = remaining;
         if (!write || off || n != 512u) {
-            if (!sd_read_sector(block, sector)) {
+            uint32_t before = sd_last_error();
+            ++n_reads;
+            if (!sd_read_sector_robust(block, sector)) {
+                ++n_read_fail;
+                if (first_fail_lba == 0xFFFFFFFFu)
+                    first_fail_lba = block;
                 tud_msc_set_sense(lun, SCSI_SENSE_MEDIUM_ERROR, write ? 0x0C : 0x11, 0x00);
                 return -1;
             }
+            if (sd_last_error() != before)
+                ++n_retries_ok;
         }
         if (write) {
             memcpy(sector + off, bytes, n);
-            if (!sd_write_sector(block, sector)) {
+            ++n_writes;
+            if (!sd_write_sector_robust(block, sector)) {
+                ++n_write_fail;
+                if (first_fail_lba == 0xFFFFFFFFu)
+                    first_fail_lba = block;
                 tud_msc_set_sense(lun, SCSI_SENSE_MEDIUM_ERROR, 0x0C, 0x00);
                 return -1;
             }

@@ -246,3 +246,45 @@ extern "C" uint32_t sd_sector_count(void) {
         return 0;
     return sd.card()->sectorCount();
 }
+
+static uint32_t last_error;
+
+static void note_error(void) {
+    last_error = ((uint32_t)sd.card()->errorCode() << 8) | sd.card()->errorData();
+}
+
+static bool reinit_card(void) {
+    return sd.cardBegin(SdSpiConfig(SD_CS, DEDICATED_SPI, SD_BAUD, &SD_PERIPH));
+}
+
+extern "C" bool sd_read_sector_robust(uint32_t sector, uint8_t* dst) {
+    if (sd_read_sector(sector, dst))
+        return true;
+    note_error();
+    sd.card()->syncDevice();
+    if (sd_read_sector(sector, dst))
+        return true;
+    note_error();
+    if (reinit_card() && sd_read_sector(sector, dst))
+        return true;
+    note_error();
+    return false;
+}
+
+extern "C" bool sd_write_sector_robust(uint32_t sector, const uint8_t* src) {
+    if (sd_write_sector(sector, src))
+        return true;
+    note_error();
+    sd.card()->syncDevice();
+    if (sd_write_sector(sector, src))
+        return true;
+    note_error();
+    if (reinit_card() && sd_write_sector(sector, src))
+        return true;
+    note_error();
+    return false;
+}
+
+extern "C" uint32_t sd_last_error(void) {
+    return last_error;
+}
