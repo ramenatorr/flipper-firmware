@@ -134,11 +134,14 @@ int main() {
 #endif
 
 
+    gc_init();
+
+    /* Start USB only once the slow boot work (card open, GUI) is done: the host
+     * starts enumerating as soon as the device connects, and unanswered
+     * descriptor requests show up on Linux as 'error -32' retries. */
 #if !DEBUG_USB_UART
     usb_iface_init();
 #endif
-
-    gc_init();
     while (1) {
         debug_task();
 #if !DEBUG_USB_UART
